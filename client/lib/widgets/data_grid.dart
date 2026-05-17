@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:linked_scroll_controller/linked_scroll_controller.dart';
 import 'const.dart';
 import 'dart:math';
@@ -12,20 +13,151 @@ const double tablePadding = 12.0;
 
 const double borderWidth = 1.0;
 
+class _CopyDataGridSelectionIntent extends Intent {
+  const _CopyDataGridSelectionIntent();
+}
+
 class DataGridController extends ChangeNotifier {
   final List<DataGridColumn> columns;
 
   Position? selectedCellPosition;
+  DataGridSelectionRange? selectedRange;
 
   DataGridController({
     required this.columns,
     this.selectedCellPosition,
-  });
+  }) : selectedRange = selectedCellPosition != null ? DataGridSelectionRange.single(selectedCellPosition) : null;
 
   List<double> get columnWidths => columns.map((e) => e.size.width).toList();
+  int get rowCount => columns.isEmpty ? 0 : columns.first.cells.length;
+  int get columnCount => columns.length;
 
   void updateSelectedCell(Position p) {
     selectedCellPosition = p;
+    selectedRange = DataGridSelectionRange.single(p);
+    notifyListeners();
+  }
+
+  void updateSelectedCellRange(Position start, Position end) {
+    selectedCellPosition = end;
+    selectedRange = DataGridSelectionRange.fromPositions(start, end);
+    notifyListeners();
+  }
+
+  void selectRowRange(int startRow, int endRow) {
+    if (rowCount == 0 || columnCount == 0) return;
+    selectedCellPosition = Position(rowIndex: endRow.clamp(0, rowCount - 1), columnIndex: 0);
+    selectedRange = DataGridSelectionRange(
+      startRow: min(startRow, endRow).clamp(0, rowCount - 1),
+      endRow: max(startRow, endRow).clamp(0, rowCount - 1),
+      startColumn: 0,
+      endColumn: columnCount - 1,
+    );
+    notifyListeners();
+  }
+
+  void selectColumnRange(int startColumn, int endColumn) {
+    if (rowCount == 0 || columnCount == 0) return;
+    selectedCellPosition = Position(rowIndex: 0, columnIndex: endColumn.clamp(0, columnCount - 1));
+    selectedRange = DataGridSelectionRange(
+      startRow: 0,
+      endRow: rowCount - 1,
+      startColumn: min(startColumn, endColumn).clamp(0, columnCount - 1),
+      endColumn: max(startColumn, endColumn).clamp(0, columnCount - 1),
+    );
+    notifyListeners();
+  }
+
+  bool isCellSelected(int rowIndex, int columnIndex) {
+    final range = selectedRange;
+    if (range == null) return false;
+    return rowIndex >= range.startRow &&
+        rowIndex <= range.endRow &&
+        columnIndex >= range.startColumn &&
+        columnIndex <= range.endColumn;
+  }
+
+  List<List<String>> selectedRowsTextMatrix() {
+    final range = selectedRange;
+    if (range == null || columns.isEmpty || columns.first.cells.isEmpty) {
+      return const [];
+    }
+    final rows = <List<String>>[];
+    for (int row = range.startRow; row <= range.endRow; row++) {
+      final line = <String>[];
+      for (int col = range.startColumn; col <= range.endColumn; col++) {
+        line.add(columns[col].cells[row].data);
+      }
+      rows.add(line);
+    }
+    return rows;
+  }
+
+  List<String> selectedHeaders() {
+    final range = selectedRange;
+    if (range == null || columns.isEmpty) return const [];
+    return [for (int col = range.startColumn; col <= range.endColumn; col++) columns[col].name];
+  }
+
+  String selectedAsTsv() {
+    final rows = selectedRowsTextMatrix();
+    if (rows.isEmpty) return '';
+    final sb = StringBuffer();
+    for (int i = 0; i < rows.length; i++) {
+      if (i > 0) sb.writeln();
+      sb.write(rows[i].map(_escapeTsv).join('\t'));
+    }
+    return sb.toString();
+  }
+
+  String _escapeTsv(String value) {
+    if (!value.contains('\t') && !value.contains('\n') && !value.contains('\r') && !value.contains('"')) {
+      return value;
+    }
+    final normalized = value.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    return '"${normalized.replaceAll('"', '""')}"';
+  }
+
+  Future<bool> copySelectionToClipboard({bool withHeaders = false}) async {
+    final body = selectedAsTsv();
+    if (body.isEmpty) return false;
+    String text = body;
+    if (withHeaders) {
+      final headers = selectedHeaders();
+      if (headers.isNotEmpty) {
+        text = '${headers.map(_escapeTsv).join('\t')}\n$body';
+      }
+    }
+    await Clipboard.setData(ClipboardData(text: text));
+    return true;
+  }
+
+  int get selectedRowCount {
+    final range = selectedRange;
+    if (range == null) return 0;
+    return range.endRow - range.startRow + 1;
+  }
+
+  int get selectedColumnCount {
+    final range = selectedRange;
+    if (range == null) return 0;
+    return range.endColumn - range.startColumn + 1;
+  }
+
+  DataGridSelectionRange? get normalizedSelectedRange {
+    final range = selectedRange;
+    if (range == null || columns.isEmpty || rowCount == 0) return null;
+    return DataGridSelectionRange(
+      startRow: range.startRow.clamp(0, rowCount - 1),
+      endRow: range.endRow.clamp(0, rowCount - 1),
+      startColumn: range.startColumn.clamp(0, columnCount - 1),
+      endColumn: range.endColumn.clamp(0, columnCount - 1),
+    );
+  }
+
+  void clearSelection() {
+    selectedCellPosition = null;
+    selectedRange = null;
     notifyListeners();
   }
 
@@ -49,6 +181,38 @@ class Position {
 
   @override
   int get hashCode => Object.hash(rowIndex, columnIndex);
+}
+
+class DataGridSelectionRange {
+  final int startRow;
+  final int endRow;
+  final int startColumn;
+  final int endColumn;
+
+  const DataGridSelectionRange({
+    required this.startRow,
+    required this.endRow,
+    required this.startColumn,
+    required this.endColumn,
+  });
+
+  factory DataGridSelectionRange.single(Position p) {
+    return DataGridSelectionRange(
+      startRow: p.rowIndex,
+      endRow: p.rowIndex,
+      startColumn: p.columnIndex,
+      endColumn: p.columnIndex,
+    );
+  }
+
+  factory DataGridSelectionRange.fromPositions(Position start, Position end) {
+    return DataGridSelectionRange(
+      startRow: min(start.rowIndex, end.rowIndex),
+      endRow: max(start.rowIndex, end.rowIndex),
+      startColumn: min(start.columnIndex, end.columnIndex),
+      endColumn: max(start.columnIndex, end.columnIndex),
+    );
+  }
 }
 
 class RowSize extends ValueNotifier<double> {
@@ -220,6 +384,12 @@ class DataGrid extends StatefulWidget {
   /// 单元格双击回调
   final void Function(Position position)? onCellDoubleTap;
 
+  /// 触发快捷复制后的回调
+  final void Function(int rows, int columns)? onCopySelection;
+
+  /// 快捷复制时是否包含表头
+  final bool copyWithHeaders;
+
   const DataGrid({
     super.key,
     required this.controller,
@@ -229,6 +399,8 @@ class DataGrid extends StatefulWidget {
     this.verticalScrollGroup,
     this.onCellTap,
     this.onCellDoubleTap,
+    this.onCopySelection,
+    this.copyWithHeaders = false,
   });
 
   @override
@@ -237,6 +409,10 @@ class DataGrid extends StatefulWidget {
 
 class _DataGridState extends State<DataGrid> {
   DataGridColumn? _rowNumberColumn;
+  final FocusNode _focusNode = FocusNode(debugLabel: 'DataGridFocus');
+  Position? _cellDragAnchor;
+  int? _rowDragAnchor;
+  int? _columnDragAnchor;
 
   // 滚动控制器管理
   late final LinkedScrollControllerGroup _horizontalScrollGroup;
@@ -278,6 +454,7 @@ class _DataGridState extends State<DataGrid> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     // 清理滚动控制器
     _headerHorizontalController.dispose();
     _bodyHorizontalController.dispose();
@@ -289,25 +466,105 @@ class _DataGridState extends State<DataGrid> {
   @override
   Widget build(BuildContext context) {
     _initRowNumberColumn();
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(context),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // 固定列部分 - 只有垂直滚动
-              _buildFixedColumns(context),
-              // 可滚动列部分 - 有垂直和水平滚动
-              _buildScrollableColumns(context),
-            ],
+    return Listener(
+      onPointerDown: (_) {
+        _focusNode.requestFocus();
+      },
+      onPointerUp: (_) {
+        _clearDragAnchors();
+      },
+      onPointerCancel: (_) {
+        _clearDragAnchors();
+      },
+      child: Shortcuts(
+        shortcuts: const <ShortcutActivator, Intent>{
+          SingleActivator(LogicalKeyboardKey.keyC, meta: true): _CopyDataGridSelectionIntent(),
+          SingleActivator(LogicalKeyboardKey.keyC, control: true): _CopyDataGridSelectionIntent(),
+        },
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            _CopyDataGridSelectionIntent: CallbackAction<_CopyDataGridSelectionIntent>(
+              onInvoke: (_) {
+                _copySelectionToClipboard();
+                return null;
+              },
+            ),
+          },
+          child: Focus(
+            focusNode: _focusNode,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      // 固定列部分 - 只有垂直滚动
+                      _buildFixedColumns(context),
+                      // 可滚动列部分 - 有垂直和水平滚动
+                      _buildScrollableColumns(context),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     );
+  }
+
+  void _clearDragAnchors() {
+    _cellDragAnchor = null;
+    _rowDragAnchor = null;
+    _columnDragAnchor = null;
+  }
+
+  Future<void> _copySelectionToClipboard() async {
+    final copied = await widget.controller.copySelectionToClipboard(withHeaders: widget.copyWithHeaders);
+    if (!copied || !mounted) return;
+    final rows = widget.controller.selectedRowCount;
+    final columns = widget.controller.selectedColumnCount;
+    widget.onCopySelection?.call(rows, columns);
+  }
+
+  void _handleCellPointerDown(Position position) {
+    _rowDragAnchor = null;
+    _columnDragAnchor = null;
+    _cellDragAnchor = position;
+    widget.controller.updateSelectedCellRange(position, position);
+  }
+
+  void _handleCellPointerEnter(Position position, int buttons) {
+    if (_cellDragAnchor == null || buttons == 0) return;
+    widget.controller.updateSelectedCellRange(_cellDragAnchor!, position);
+  }
+
+  void _handleColumnPointerDown(int columnIndex) {
+    _rowDragAnchor = null;
+    _cellDragAnchor = null;
+    _columnDragAnchor = columnIndex;
+    widget.controller.selectColumnRange(columnIndex, columnIndex);
+  }
+
+  void _handleColumnPointerEnter(int columnIndex, int buttons) {
+    if (_columnDragAnchor == null || buttons == 0) return;
+    widget.controller.selectColumnRange(_columnDragAnchor!, columnIndex);
+  }
+
+  void _handleRowPointerDown(int rowIndex) {
+    _columnDragAnchor = null;
+    _cellDragAnchor = null;
+    _rowDragAnchor = rowIndex;
+    widget.controller.selectRowRange(rowIndex, rowIndex);
+  }
+
+  void _handleRowPointerEnter(int rowIndex, int buttons) {
+    if (_rowDragAnchor == null || buttons == 0) return;
+    widget.controller.selectRowRange(_rowDragAnchor!, rowIndex);
   }
 
   /// 构建表头
@@ -323,6 +580,7 @@ class _DataGridState extends State<DataGrid> {
               column: _rowNumberColumn!,
               index: 0,
               headerHeight: widget.headerHeight,
+              selectable: false,
             ),
           // 可滚动列表头
           Expanded(
@@ -339,6 +597,10 @@ class _DataGridState extends State<DataGrid> {
                         column: widget.controller.columns[i],
                         index: i,
                         headerHeight: widget.headerHeight,
+                        selectable: true,
+                        onPointerDown: () => _handleColumnPointerDown(i),
+                        onPointerEnter: (buttons) => _handleColumnPointerEnter(i, buttons),
+                        onTap: () => widget.controller.selectColumnRange(i, i),
                       ),
                     const SizedBox(width: tablePadding),
                   ],
@@ -351,7 +613,12 @@ class _DataGridState extends State<DataGrid> {
     );
   }
 
-  Widget _buildColumn(BuildContext context, DataGridColumn column, int columnIndex) {
+  Widget _buildColumn(
+    BuildContext context,
+    DataGridColumn column,
+    int columnIndex, {
+    bool isRowHeader = false,
+  }) {
     return ValueListenableBuilder<double>(
       valueListenable: column.size,
       builder: (context, width, child) {
@@ -368,6 +635,21 @@ class _DataGridState extends State<DataGrid> {
                 onCellDoubleTap: widget.onCellDoubleTap,
                 alignment: column.dataAlignment,
                 textColor: column.textColor,
+                onPointerDown: () {
+                  if (isRowHeader) {
+                    _handleRowPointerDown(i);
+                  } else {
+                    _handleCellPointerDown(Position(rowIndex: i, columnIndex: columnIndex));
+                  }
+                },
+                onPointerEnter: (buttons) {
+                  if (isRowHeader) {
+                    _handleRowPointerEnter(i, buttons);
+                  } else {
+                    _handleCellPointerEnter(Position(rowIndex: i, columnIndex: columnIndex), buttons);
+                  }
+                },
+                isRowHeader: isRowHeader,
               ),
           ],
         );
@@ -392,7 +674,7 @@ class _DataGridState extends State<DataGrid> {
               mainAxisAlignment: MainAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_rowNumberColumn != null) _buildColumn(context, _rowNumberColumn!, 0),
+                if (_rowNumberColumn != null) _buildColumn(context, _rowNumberColumn!, 0, isRowHeader: true),
               ],
             ),
             const SizedBox(height: tablePadding), // 底部留白
@@ -468,12 +750,20 @@ class _DataGridHeaderCell extends StatefulWidget {
   final DataGridColumn column;
   final int index;
   final double headerHeight;
+  final bool selectable;
+  final VoidCallback? onTap;
+  final VoidCallback? onPointerDown;
+  final void Function(int buttons)? onPointerEnter;
 
   const _DataGridHeaderCell({
     required this.controller,
     required this.column,
     required this.index,
     required this.headerHeight,
+    this.selectable = false,
+    this.onTap,
+    this.onPointerDown,
+    this.onPointerEnter,
   });
 
   @override
@@ -497,10 +787,27 @@ class _DataGridHeaderCellState extends State<_DataGridHeaderCell> {
               child: Stack(
                 children: [
                   // 表头内容
-                  DataGridColumn.buildHeaderWidget(
-                    context: context,
-                    name: widget.column.name,
-                    dataType: widget.column.dataType,
+                  Positioned.fill(
+                    child: MouseRegion(
+                      onEnter: (event) {
+                        widget.onPointerEnter?.call(event.buttons);
+                      },
+                      child: Listener(
+                        behavior: HitTestBehavior.opaque,
+                        onPointerDown: (_) {
+                          widget.onPointerDown?.call();
+                        },
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.selectable ? widget.onTap : null,
+                          child: DataGridColumn.buildHeaderWidget(
+                            context: context,
+                            name: widget.column.name,
+                            dataType: widget.column.dataType,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                   // 拖动手柄（只有可调整大小的列才显示）
                   if (widget.column.resizable)
@@ -555,6 +862,9 @@ class _DataGridCell extends StatelessWidget {
   final void Function(Position position)? onCellDoubleTap;
   final Alignment? alignment;
   final Color? textColor;
+  final VoidCallback? onPointerDown;
+  final void Function(int buttons)? onPointerEnter;
+  final bool isRowHeader;
 
   const _DataGridCell({
     required this.position,
@@ -566,6 +876,9 @@ class _DataGridCell extends StatelessWidget {
     this.onCellDoubleTap,
     this.alignment,
     this.textColor,
+    this.onPointerDown,
+    this.onPointerEnter,
+    this.isRowHeader = false,
   });
 
   @override
@@ -574,24 +887,40 @@ class _DataGridCell extends StatelessWidget {
       child: SizedBox(
         width: width,
         height: rowHeight,
-        child: GestureDetector(
+        child: Listener(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            controller.updateSelectedCell(position);
-            onCellTap?.call(position);
+          onPointerDown: (_) {
+            onPointerDown?.call();
           },
-          onDoubleTap: () {
-            controller.updateSelectedCell(position);
-            onCellDoubleTap?.call(position);
-          },
-          child: Container(
-            alignment: alignment ?? Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: kSpacingSmall),
-            child: Text(
-              data,
-              maxLines: 1,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textColor),
-              overflow: TextOverflow.ellipsis,
+          child: MouseRegion(
+            onEnter: (event) {
+              onPointerEnter?.call(event.buttons);
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (isRowHeader) {
+                  controller.selectRowRange(position.rowIndex, position.rowIndex);
+                  return;
+                }
+                controller.updateSelectedCell(position);
+                onCellTap?.call(position);
+              },
+              onDoubleTap: () {
+                if (isRowHeader) return;
+                controller.updateSelectedCell(position);
+                onCellDoubleTap?.call(position);
+              },
+              child: Container(
+                alignment: alignment ?? Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: kSpacingSmall),
+                child: Text(
+                  data,
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textColor),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ),
         ),
@@ -673,50 +1002,35 @@ class _SelectionLayerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final selectedPosition = controller.selectedCellPosition;
-    if (selectedPosition == null) return;
+    final range = controller.normalizedSelectedRange;
+    if (range == null) return;
 
-    final selectedRowIndex = selectedPosition.rowIndex;
-    final selectedColumnIndex = selectedPosition.columnIndex;
+    final x = controller.columnWidths.take(range.startColumn).fold(0.0, (sum, width) => sum + width);
+    final selectedWidth = controller.columnWidths
+        .skip(range.startColumn)
+        .take(range.endColumn - range.startColumn + 1)
+        .fold(0.0, (sum, width) => sum + width);
+    final y = range.startRow * rowHeight;
+    final selectedHeight = (range.endRow - range.startRow + 1) * rowHeight;
 
-    // 计算选中行的Y坐标
-    final rowY = selectedRowIndex * rowHeight;
-
-    // 计算所有列总宽度
-    final totalWidth = controller.columnWidths.fold(0.0, (sum, width) => sum + width);
-
-    // 绘制选中行的背景色（覆盖所有列）
-    final rowBackgroundPaint = Paint()
-      ..color = colorScheme.surfaceContainerLow // 选中行背景色
+    final backgroundPaint = Paint()
+      ..color = colorScheme.surfaceContainerLow
       ..style = PaintingStyle.fill
       ..isAntiAlias = false;
+    canvas.drawRect(Rect.fromLTWH(x, y, selectedWidth, selectedHeight), backgroundPaint);
 
-    final rowBackgroundRect = Rect.fromLTWH(
-      0, // x
-      rowY, // y
-      totalWidth,
-      rowHeight,
-    );
-    canvas.drawRect(rowBackgroundRect, rowBackgroundPaint);
-
-    // 计算选中单元格的X坐标和宽度
-    final cellX = controller.columnWidths.take(selectedColumnIndex).fold(0.0, (sum, width) => sum + width);
-    final cellWidth = controller.columnWidths[selectedColumnIndex];
-
-    // 绘制选中单元格的内边框
     final selectedBorderPaint = Paint()
-      ..color = colorScheme.primary // 选中单元格内边框颜色
+      ..color = colorScheme.primary
       ..strokeWidth = borderWidth
       ..style = PaintingStyle.stroke
       ..isAntiAlias = false;
-
-    final selectedCellRect = Rect.fromLTWH(
-      cellX + borderWidth * 2,
-      rowY + borderWidth * 2,
-      cellWidth - borderWidth * 4,
-      rowHeight - borderWidth * 4,
+    final selectedRect = Rect.fromLTWH(
+      x + borderWidth * 2,
+      y + borderWidth * 2,
+      max(0, selectedWidth - borderWidth * 4),
+      max(0, selectedHeight - borderWidth * 4),
     );
-    canvas.drawRect(selectedCellRect, selectedBorderPaint);
+    canvas.drawRect(selectedRect, selectedBorderPaint);
   }
 
   @override
