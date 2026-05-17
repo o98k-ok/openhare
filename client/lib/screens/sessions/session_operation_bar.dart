@@ -15,6 +15,7 @@ import 'package:client/widgets/divider.dart';
 import 'package:client/widgets/loading.dart';
 import 'package:client/widgets/sql_highlight.dart';
 import 'package:client/widgets/tooltip.dart';
+import 'package:client/utils/sql_format.dart';
 import 'package:db_driver/db_driver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -261,6 +262,40 @@ class SessionOpBar extends ConsumerWidget {
     );
   }
 
+  void _showMessage(BuildContext context, String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _formatSelectedSql(BuildContext context) {
+    final selection = codeController.selection;
+    if (selection.isCollapsed) {
+      _showMessage(context, '请先选中需要格式化的 SQL');
+      return;
+    }
+    final selectedText = codeController.selectedText;
+    if (selectedText.trim().isEmpty) {
+      _showMessage(context, '选中内容为空');
+      return;
+    }
+
+    final formatted = formatSelectedSql(selectedText);
+    codeController.replaceSelection(formatted, selection);
+    _showMessage(context, '已格式化选中 SQL');
+  }
+
+  Widget formatSqlWidget(BuildContext context) {
+    return RectangleIconButton.medium(
+      tooltip: '格式化选中 SQL',
+      icon: Icons.auto_fix_high,
+      iconColor: Theme.of(context).colorScheme.primary,
+      onPressed: () {
+        _formatSelectedSql(context);
+      },
+    );
+  }
+
   Widget divider(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: kSpacingTiny),
@@ -297,6 +332,7 @@ class SessionOpBar extends ConsumerWidget {
           divider(context),
           executeWidget(context, ref, model),
           executeAddWidget(context, ref, model),
+          formatSqlWidget(context),
           explainWidget(context, ref, model),
           exportDataWidget(context, model),
           taskOverviewWidget(context, ref, model),
