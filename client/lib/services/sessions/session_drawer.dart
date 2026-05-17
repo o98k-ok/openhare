@@ -1,6 +1,5 @@
 import 'package:client/models/sessions.dart';
 import 'package:client/services/sessions/sessions.dart';
-import 'package:db_driver/db_driver.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'session_drawer.g.dart';
@@ -12,9 +11,6 @@ class SessionDrawerServices extends _$SessionDrawerServices {
     return SessionDrawerModel(
       sessionId: sessionId,
       drawerPage: DrawerPage.metadataTree,
-      sqlResult: null,
-      sqlColumn: null,
-      showRecord: false,
       isRightPageOpen: true,
     );
   }
@@ -27,20 +23,8 @@ class SessionDrawerServices extends _$SessionDrawerServices {
     state = state.copyWith(isRightPageOpen: false);
   }
 
-  void showSQLResult({BaseQueryValue? result, BaseQueryColumn? column}) {
-    state = state.copyWith(
-      drawerPage: DrawerPage.sqlResult,
-      sqlColumn: column ?? state.sqlColumn,
-      sqlResult: result ?? state.sqlResult,
-    );
-  }
-
   void goToTree() {
     state = state.copyWith(drawerPage: DrawerPage.metadataTree);
-  }
-
-  void showChat() {
-    state = state.copyWith(drawerPage: DrawerPage.aiChat);
   }
 }
 

@@ -644,32 +644,6 @@ class SessionDrawerBar extends ConsumerWidget {
               services.goToTree();
             },
           ),
-          RectangleIconButton.medium(
-            tooltip: AppLocalizations.of(context)!.button_tooltip_sql_result,
-            icon: Icons.article_outlined,
-            backgroundColor: (model.drawerPage == DrawerPage.sqlResult)
-                ? Theme.of(context)
-                      .colorScheme
-                      .primaryContainer // 结果页面 icon 背景色
-                : null,
-            onPressed: () {
-              services.showSQLResult();
-            },
-          ),
-          // AI chat
-          RectangleIconButton.medium(
-            tooltip: AppLocalizations.of(context)!.button_tooltip_ai_chat,
-            icon: Icons.auto_awesome,
-            iconColor: Colors.purple[600]!,
-            backgroundColor: (model.drawerPage == DrawerPage.aiChat)
-                ? Theme.of(context)
-                      .colorScheme
-                      .primaryContainer // AI chat 页面 icon 背景色
-                : null,
-            onPressed: () {
-              services.showChat();
-            },
-          ),
           const SizedBox(width: kSpacingSmall),
           RectangleIconButton.medium(
             icon: model.isRightPageOpen ? Icons.menu : Icons.menu_open,

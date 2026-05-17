@@ -179,8 +179,6 @@ enum SQLExecuteState { init, executing, done, error }
 
 enum DrawerPage {
   metadataTree,
-  sqlResult,
-  aiChat,
 }
 
 @freezed
@@ -188,9 +186,6 @@ abstract class SessionDrawerModel with _$SessionDrawerModel {
   const factory SessionDrawerModel({
     required SessionId sessionId,
     required DrawerPage drawerPage,
-    required BaseQueryValue? sqlResult,
-    required BaseQueryColumn? sqlColumn,
-    required bool showRecord,
     required bool isRightPageOpen,
   }) = _SessionDrawerModel;
 }
