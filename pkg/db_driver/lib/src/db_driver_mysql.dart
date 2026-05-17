@@ -22,7 +22,9 @@ class MySQLConnection extends GoImplConnection {
     final host = meta.getHost();
     final port = meta.getPort() ?? 3306;
     final user = meta.user;
-    final password = Uri.encodeComponent(meta.password);
+    // go-sql-driver/mysql treats DSN password as raw text.
+    // URL-encoding here would be treated literally and break special-character passwords.
+    final password = meta.password;
 
     final dsn = '$user:$password@tcp($host:$port)/$database';
 
