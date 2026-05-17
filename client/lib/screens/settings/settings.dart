@@ -120,24 +120,69 @@ class SystemSettingPage extends ConsumerWidget {
                 ],
               ),
             ),
-            Row(
-              children: [
-                _SettingRadioOption(
-                  title: Text(AppLocalizations.of(context)!.theme_light),
-                  value: "light",
-                  selectedValue: model.theme,
-                  onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("light"),
-                ),
-                const SizedBox(width: 8),
-                _SettingRadioOption(
-                  title: Text(AppLocalizations.of(context)!.theme_dark),
-                  value: "dark",
-                  selectedValue: model.theme,
-                  onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("dark"),
-                ),
-              ],
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _SettingRadioOption(
+                    title: Text(AppLocalizations.of(context)!.theme_light),
+                    value: "light",
+                    selectedValue: model.theme,
+                    swatchColors: const [
+                      Color(0xff3e8ee8),
+                      Color(0xfff06c97),
+                      Color(0xffffb15f),
+                    ],
+                    onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("light"),
+                  ),
+                  _SettingRadioOption(
+                    title: const Text("薄荷"),
+                    value: "mint",
+                    selectedValue: model.theme,
+                    swatchColors: const [
+                      Color(0xff168a7a),
+                      Color(0xff4e81bd),
+                      Color(0xffdd9635),
+                    ],
+                    onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("mint"),
+                  ),
+                  _SettingRadioOption(
+                    title: const Text("日落"),
+                    value: "sunset",
+                    selectedValue: model.theme,
+                    swatchColors: const [
+                      Color(0xffd85b62),
+                      Color(0xff8266c7),
+                      Color(0xffe18c34),
+                    ],
+                    onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("sunset"),
+                  ),
+                  _SettingRadioOption(
+                    title: const Text("潟湖"),
+                    value: "lagoon",
+                    selectedValue: model.theme,
+                    swatchColors: const [
+                      Color(0xff2f72cf),
+                      Color(0xff1595ad),
+                      Color(0xff8a65d6),
+                    ],
+                    onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("lagoon"),
+                  ),
+                  _SettingRadioOption(
+                    title: Text(AppLocalizations.of(context)!.theme_dark),
+                    value: "dark",
+                    selectedValue: model.theme,
+                    swatchColors: const [
+                      Color(0xff84cbd2),
+                      Color(0xffddca98),
+                      Color(0xff172022),
+                    ],
+                    onTap: () => ref.read(systemSettingServiceProvider.notifier).setTheme("dark"),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
           ],
         ),
       ],
@@ -149,12 +194,14 @@ class _SettingRadioOption extends StatelessWidget {
   final Widget title;
   final String value;
   final String selectedValue;
+  final List<Color> swatchColors;
   final VoidCallback onTap;
 
   const _SettingRadioOption({
     required this.title,
     required this.value,
     required this.selectedValue,
+    this.swatchColors = const [],
     required this.onTap,
   });
 
@@ -164,7 +211,7 @@ class _SettingRadioOption extends StatelessWidget {
     final isSelected = selectedValue == value;
 
     return SizedBox(
-      width: 140,
+      width: 132,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -188,10 +235,48 @@ class _SettingRadioOption extends StatelessWidget {
                 ),
                 const SizedBox(width: kSpacingSmall),
                 Expanded(child: title),
+                if (swatchColors.isNotEmpty) ...[
+                  const SizedBox(width: kSpacingSmall),
+                  _ThemeSwatch(colors: swatchColors),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ThemeSwatch extends StatelessWidget {
+  final List<Color> colors;
+
+  const _ThemeSwatch({required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 30,
+      height: 14,
+      child: Stack(
+        children: [
+          for (var i = 0; i < colors.length; i++)
+            Positioned(
+              left: i * 8,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: colors[i],
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surfaceContainerLowest.withValues(alpha: 0.8),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

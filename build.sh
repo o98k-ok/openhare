@@ -103,11 +103,17 @@ build_macos() {
   arch="$(uname -m)"
   local flutter_mode_flag
   flutter_mode_flag="--$BUILD_MODE"
+  local build_dir_name
+  case "$BUILD_MODE" in
+    debug) build_dir_name="Debug" ;;
+    release) build_dir_name="Release" ;;
+    *) err "Unsupported build mode: $BUILD_MODE" ;;
+  esac
 
   log "Building macOS app ($BUILD_MODE)"
   (cd "$CLIENT_DIR" && flutter build macos "$flutter_mode_flag")
 
-  local app_path="$CLIENT_DIR/build/macos/Build/Products/${BUILD_MODE^}/$APP_NAME.app"
+  local app_path="$CLIENT_DIR/build/macos/Build/Products/$build_dir_name/$APP_NAME.app"
   [[ -d "$app_path" ]] || err "Build output not found: $app_path"
   log "App built: $app_path"
 

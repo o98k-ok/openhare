@@ -1,14 +1,20 @@
 // size
 const double tabbarHeight = 40;
 const double bottomBarHeight = 32;
-const double navigationSidebarCollapsedWidth = 92;
-const double navigationSidebarExpandedWidth = 248;
+const double navigationSidebarCollapsedWidth = 72;
+const double navigationSidebarExpandedWidth = 220;
 
 // 组件之间的间距
-const double kSpacingTiny = 5.0;
-const double kSpacingSmall = 10.0;
-const double kSpacingMedium = 20.0;
-const double kSpacingLarge = 32.0;
+const double kSpacingTiny = 4.0;
+const double kSpacingSmall = 8.0;
+const double kSpacingMedium = 16.0;
+const double kSpacingLarge = 24.0;
+
+// 圆角
+const double kRadiusSmall = 10.0;
+const double kRadiusMedium = 14.0;
+const double kRadiusLarge = 20.0;
+const double kRadiusPill = 999.0;
 
 // 分割线
 const double kDividerThickness = 1;

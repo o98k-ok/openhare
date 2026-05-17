@@ -86,17 +86,25 @@ class _RectangleIconButtonState extends State<RectangleIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final enabled = widget.onPressed != null;
+    final backgroundColor = _isHovering
+        ? widget.hoverBackgroundColor ?? colorScheme.surfaceContainerLowest.withValues(alpha: 0.84)
+        : widget.backgroundColor ?? colorScheme.surfaceContainerLowest.withValues(alpha: 0.46);
+    final foregroundColor = enabled
+        ? (widget.iconColor ?? colorScheme.onSurfaceVariant)
+        : colorScheme.onSurfaceVariant.withValues(alpha: 0.42);
     final button = MouseRegion(
-      cursor: widget.onPressed != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (value) {
-        if (widget.onPressed != null && !_isHovering) {
+        if (enabled && !_isHovering) {
           setState(() {
             _isHovering = true;
           });
         }
       },
       onExit: (value) {
-        if (widget.onPressed != null && _isHovering) {
+        if (enabled && _isHovering) {
           setState(() {
             _isHovering = false;
           });
@@ -115,17 +123,17 @@ class _RectangleIconButtonState extends State<RectangleIconButton> {
             width: widget.size - widget.padding * 2,
             height: widget.size - widget.padding * 2,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(widget.size * 0.2),
-              color: _isHovering
-                  ? widget.hoverBackgroundColor ??
-                        Theme.of(context)
-                            .colorScheme
-                            .primaryContainer // icon button 鼠标悬浮的颜色
-                  : widget.backgroundColor, // icon button 背景色
+              borderRadius: BorderRadius.circular(kRadiusPill),
+              color: backgroundColor,
+              border: Border.all(
+                color: _isHovering
+                    ? colorScheme.surfaceContainerLowest.withValues(alpha: 0.82)
+                    : colorScheme.surfaceContainerLowest.withValues(alpha: 0.36),
+              ),
             ),
             child: Icon(
               widget.icon,
-              color: widget.iconColor,
+              color: foregroundColor,
               size: widget.iconSize,
             ),
           ),

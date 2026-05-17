@@ -115,231 +115,260 @@ class _ScaffoldWithNavRailState extends State<ScaffoldWithNavRail> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
     final selectedIndex = _calculateSelectedIndex(context);
     final destinations = _destinations(context);
 
-    return Row(
-      children: <Widget>[
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          width: extended ? navigationSidebarExpandedWidth : navigationSidebarCollapsedWidth,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.alphaBlend(
-                  colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.05 : 0.08),
-                  colorScheme.surface,
-                ),
-                colorScheme.surface,
-              ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primaryContainer.withValues(alpha: isLight ? 0.94 : 0.24),
+            colorScheme.tertiaryContainer.withValues(alpha: isLight ? 0.92 : 0.2),
+            colorScheme.secondaryContainer.withValues(alpha: isLight ? 0.84 : 0.18),
+          ],
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            width: extended ? navigationSidebarExpandedWidth : navigationSidebarCollapsedWidth,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primaryContainer.withValues(alpha: isLight ? 0.74 : 0.2),
+                  colorScheme.tertiaryContainer.withValues(alpha: isLight ? 0.62 : 0.16),
+                ],
+              ),
+              border: Border(
+                right: BorderSide(color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.66)),
+              ),
             ),
-            border: Border(
-              right: BorderSide(color: colorScheme.outlineVariant),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
-            child: Column(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.symmetric(horizontal: extended ? 14 : 0, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Color.alphaBlend(
-                      colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.05 : 0.08),
-                      colorScheme.surfaceContainerLow,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showLabels = extended && constraints.maxWidth >= 152;
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(showLabels ? 12 : 10, 14, showLabels ? 12 : 10, 16),
+                  child: Column(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        padding: const EdgeInsets.all(8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.symmetric(horizontal: showLabels ? 10 : 0, vertical: 12),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerLowest,
-                          borderRadius: BorderRadius.circular(14),
+                          color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(kRadiusLarge + 4),
+                          border: Border.all(color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.62)),
                           boxShadow: [
                             BoxShadow(
                               color: colorScheme.shadow.withValues(
-                                alpha: theme.brightness == Brightness.light ? 0.06 : 0.2,
+                                alpha: theme.brightness == Brightness.light ? 0.07 : 0.22,
                               ),
-                              blurRadius: 16,
-                              offset: const Offset(0, 8),
+                              blurRadius: 22,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
-                        child: Image.asset('assets/icons/logo.png'),
-                      ),
-                      if (extended) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'openhare',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                destinations[selectedIndex].label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            extended = !extended;
-                          });
-                        },
-                        style: IconButton.styleFrom(
-                          backgroundColor: colorScheme.surfaceContainerLowest,
-                          foregroundColor: colorScheme.onSurfaceVariant,
-                          minimumSize: const Size(40, 40),
-                        ),
-                        icon: Icon(
-                          extended ? Icons.menu_open_rounded : Icons.menu_rounded,
-                          size: kIconSizeMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: destinations.length,
-                    padding: EdgeInsets.zero,
-                    itemBuilder: (context, index) {
-                      final item = destinations[index];
-                      final selected = index == selectedIndex;
-                      final itemColor = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
-                      final itemBackground = selected
-                          ? Color.alphaBlend(
-                              colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.08 : 0.12),
-                              colorScheme.primaryContainer,
-                            )
-                          : Colors.transparent;
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () => _onItemTapped(index, context),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOutCubic,
-                            padding: EdgeInsets.symmetric(horizontal: extended ? 14 : 10, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: itemBackground,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: selected ? colorScheme.primary.withValues(alpha: 0.16) : Colors.transparent,
-                              ),
-                              boxShadow: selected
-                                  ? [
-                                      BoxShadow(
-                                        color: colorScheme.primary.withValues(
-                                          alpha: theme.brightness == Brightness.light ? 0.12 : 0.18,
-                                        ),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  curve: Curves.easeOutCubic,
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? colorScheme.surfaceContainerLowest
-                                        : colorScheme.surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: item.iconBuilder(itemColor),
-                                ),
-                                if (extended) ...[
-                                  const SizedBox(width: 12),
+                        child: showLabels
+                            ? Row(
+                                children: [
+                                  _SidebarLogo(colorScheme: colorScheme),
+                                  const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      item.label,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
-                                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Openhare',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            color: colorScheme.onSurface,
+                                          ),
+                                        ),
+                                        Text(
+                                          destinations[selectedIndex].label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.labelMedium?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    tooltip: extended ? 'Collapse' : 'Expand',
+                                    onPressed: () {
+                                      setState(() {
+                                        extended = !extended;
+                                      });
+                                    },
+                                    icon: Icon(
+                                      extended ? Icons.keyboard_double_arrow_left_rounded : Icons.menu_rounded,
+                                      size: kIconSizeMedium,
                                     ),
                                   ),
                                 ],
+                              )
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _SidebarLogo(colorScheme: colorScheme),
+                                  const SizedBox(height: 8),
+                                  IconButton(
+                                    tooltip: 'Expand',
+                                    onPressed: () {
+                                      setState(() {
+                                        extended = !extended;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.keyboard_double_arrow_right_rounded, size: kIconSizeMedium),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 14),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: destinations.length,
+                          padding: EdgeInsets.zero,
+                          itemBuilder: (context, index) {
+                            final item = destinations[index];
+                            final selected = index == selectedIndex;
+                            final itemColor = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+                            final itemBackground = selected
+                                ? colorScheme.surfaceContainerLowest.withValues(alpha: 0.82)
+                                : Colors.transparent;
+
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(kRadiusPill),
+                                onTap: () => _onItemTapped(index, context),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  curve: Curves.easeOutCubic,
+                                  constraints: const BoxConstraints(minHeight: 42),
+                                  padding: EdgeInsets.symmetric(horizontal: showLabels ? 12 : 7, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: itemBackground,
+                                    borderRadius: BorderRadius.circular(kRadiusPill),
+                                    border: Border.all(
+                                      color: selected
+                                          ? colorScheme.surfaceContainerLowest.withValues(alpha: 0.72)
+                                          : Colors.transparent,
+                                    ),
+                                    boxShadow: selected
+                                        ? [
+                                            BoxShadow(
+                                              color: colorScheme.shadow.withValues(alpha: 0.06),
+                                              blurRadius: 18,
+                                              offset: const Offset(0, 8),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: showLabels ? MainAxisAlignment.start : MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 28,
+                                        height: 28,
+                                        child: Center(child: item.iconBuilder(itemColor)),
+                                      ),
+                                      if (showLabels) ...[
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            item.label,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.labelLarge?.copyWith(
+                                              color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          separatorBuilder: (_, index) => const SizedBox(height: 6),
+                        ),
+                      ),
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 160),
+                        opacity: showLabels ? 1 : 0,
+                        child: IgnorePointer(
+                          ignoring: !showLabels,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.54),
+                              borderRadius: BorderRadius.circular(kRadiusPill),
+                              border: Border.all(color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.62)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.circle, size: 8, color: colorScheme.tertiary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    destinations[selectedIndex].label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                    separatorBuilder: (_, index) => const SizedBox(height: 8),
-                  ),
-                ),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 160),
-                  opacity: extended ? 1 : 0,
-                  child: IgnorePointer(
-                    ignoring: !extended,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: colorScheme.outlineVariant),
                       ),
-                      child: Text(
-                        destinations[selectedIndex].label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-        ),
-        Expanded(child: widget.child),
-      ],
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(kRadiusLarge + 6),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.82),
+                    border: Border.all(color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.72)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: theme.brightness == Brightness.light ? 0.08 : 0.28),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: widget.child,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -425,6 +454,27 @@ class _SidebarDestination {
 
   final String label;
   final Widget Function(Color color) iconBuilder;
+}
+
+class _SidebarLogo extends StatelessWidget {
+  const _SidebarLogo({required this.colorScheme});
+
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(kRadiusMedium),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Image.asset('assets/icons/logo.png'),
+    );
+  }
 }
 
 class _WindowListener with WindowListener {
