@@ -3,13 +3,11 @@ import 'dart:io';
 import 'package:client/l10n/app_localizations.dart';
 import 'package:client/models/instances.dart';
 import 'package:client/models/tasks.dart';
-import 'package:client/services/ai/agent.dart';
 import 'package:client/services/tasks/export_data.dart';
 import 'package:client/utils/file_utils.dart';
 import 'package:client/widgets/button.dart';
 import 'package:client/widgets/const.dart';
 import 'package:client/widgets/dialog.dart';
-import 'package:client/widgets/loading.dart';
 import 'package:client/widgets/sql_highlight.dart';
 import 'package:db_driver/db_driver.dart';
 import 'package:file_picker/file_picker.dart';
@@ -60,8 +58,6 @@ class _ExportDataDialogContent extends ConsumerStatefulWidget {
 }
 
 class _ExportDataDialogContentState extends ConsumerState<_ExportDataDialogContent> {
-  bool _isGenerating = false;
-  String? _errorMessage;
   late final TextEditingController dirController;
   late final TextEditingController fileNameController;
   late final TextEditingController descController;
@@ -133,60 +129,6 @@ class _ExportDataDialogContentState extends ConsumerState<_ExportDataDialogConte
     Navigator.of(context).pop();
   }
 
-  Future<void> _generateFileNameWithAI() async {
-    final llmAgents = ref.read(lLMAgentProvider);
-    final lastUsedAgent = llmAgents.lastUsedLLMAgent;
-
-    if (lastUsedAgent == null) {
-      setState(() {
-        _errorMessage = AppLocalizations.of(context)!.error_llm_agent_not_found;
-      });
-      return;
-    }
-
-    setState(() {
-      _errorMessage = null;
-      _isGenerating = true;
-    });
-
-    try {
-      // 构建参数
-      final parameters = _getExportDataParameters();
-
-      // 调用AI生成文件名和描述
-      final result = await ref
-          .read(lLMAgentServiceProvider.notifier)
-          .generateExportFileName(
-            lastUsedAgent.id,
-            parameters,
-          );
-
-      // 设置文件名，确保带有.csv后缀
-      String fileName = result.fileName.trim();
-      if (!fileName.toLowerCase().endsWith('.csv')) {
-        fileName = '$fileName.csv';
-      }
-      fileNameController.text = fileName;
-
-      // 设置描述（如果有）
-      if (result.desc != null && result.desc!.isNotEmpty) {
-        descController.text = result.desc!;
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = AppLocalizations.of(context)!.error_generate_file_name_failed(e.toString());
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isGenerating = false;
-        });
-      }
-    }
-  }
-
   Widget _buildTaskInfoCard() {
     final textStyle = Theme.of(context).textTheme.bodyMedium;
 
@@ -246,32 +188,6 @@ class _ExportDataDialogContentState extends ConsumerState<_ExportDataDialogConte
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFileNameSuffixIcons() {
-    return Container(
-      padding: const EdgeInsets.only(right: kSpacingTiny),
-      width: kIconButtonSizeSmall + kIconButtonSizeMedium + kSpacingTiny,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (_errorMessage != null)
-            RectangleIconButton.small(
-              icon: Icons.error_outline,
-              iconColor: Theme.of(context).colorScheme.error,
-              tooltip: _errorMessage!,
-            ),
-          (_isGenerating)
-              ? const Loading.medium()
-              : RectangleIconButton.medium(
-                  icon: Icons.auto_awesome,
-                  tooltip: AppLocalizations.of(context)!.tooltip_ai_generate_file_name,
-                  iconColor: Colors.purple[600]!,
-                  onPressed: _generateFileNameWithAI,
-                ),
-        ],
-      ),
     );
   }
 
@@ -368,7 +284,6 @@ class _ExportDataDialogContentState extends ConsumerState<_ExportDataDialogConte
             // 文件名输入
             TextFormField(
               controller: fileNameController,
-              enabled: !_isGenerating,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -379,14 +294,12 @@ class _ExportDataDialogContentState extends ConsumerState<_ExportDataDialogConte
               decoration: _buildInputDecoration(
                 labelText: AppLocalizations.of(context)!.task_column_file_name,
                 required: true,
-                suffixIcon: _buildFileNameSuffixIcons(),
               ),
             ),
             const SizedBox(height: kSpacingMedium),
             // 备注
             TextField(
               controller: descController,
-              enabled: !_isGenerating,
               decoration: _buildInputDecoration(
                 labelText: AppLocalizations.of(context)!.db_instance_desc,
               ),
