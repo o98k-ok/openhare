@@ -83,9 +83,11 @@ class PageSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ScaffoldWithNavRail(
       child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest, // 全局背景色
+        color: colorScheme.surfaceContainerLowest, // 全局背景色
         child: Row(
           children: [
             const PixelVerticalDivider(),
@@ -94,7 +96,13 @@ class PageSkeleton extends StatelessWidget {
                 children: [
                   MoveWindows(
                     child: Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerLowest, // header 背景色
+                      padding: const EdgeInsets.only(left: kSpacingMedium, right: kSpacingTiny),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(color: colorScheme.outlineVariant),
+                        ),
+                      ),
                       height: tabbarHeight,
                       child: Row(
                         children: [
@@ -107,14 +115,13 @@ class PageSkeleton extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const PixelDivider(),
                   Expanded(
                     child: child,
                   ),
                   const PixelDivider(),
                   Container(
                     height: bottomBarHeight,
-                    color: Theme.of(context).colorScheme.surfaceContainerLowest, // bottom 背景色
+                    color: colorScheme.surface, // bottom 背景色
                     child: bottomBar,
                   ),
                 ],

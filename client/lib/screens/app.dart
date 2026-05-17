@@ -1,6 +1,5 @@
 import 'package:client/models/sessions.dart';
 import 'package:client/screens/instances/instance_tables.dart';
-import 'package:client/screens/page_skeleton.dart';
 import 'package:client/screens/settings/settings.dart';
 import 'package:client/screens/about/about.dart';
 import 'package:client/screens/sessions/sessions.dart';
@@ -110,90 +109,268 @@ class ScaffoldWithNavRail extends StatefulWidget {
 }
 
 class _ScaffoldWithNavRailState extends State<ScaffoldWithNavRail> {
-  bool extended = false;
+  bool extended = true;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final selectedIndex = _calculateSelectedIndex(context);
+    final destinations = _destinations(context);
+
     return Row(
       children: <Widget>[
-        MoveWindows(
-          child: NavigationRail(
-            minWidth: navigationRailWidth,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest, // navigation color
-            useIndicator: true,
-            selectedIndex: _calculateSelectedIndex(context),
-            onDestinationSelected: (value) {
-              _onItemTapped(value, context);
-            },
-            extended: extended,
-            leading: Column(
-              mainAxisSize: MainAxisSize.min,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          width: extended ? navigationSidebarExpandedWidth : navigationSidebarCollapsedWidth,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.alphaBlend(
+                  colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.05 : 0.08),
+                  colorScheme.surface,
+                ),
+                colorScheme.surface,
+              ],
+            ),
+            border: Border(
+              right: BorderSide(color: colorScheme.outlineVariant),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
+            child: Column(
               children: [
-                const SizedBox(height: tabbarHeight),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      extended = !extended;
-                    });
-                  },
-                  child: extended
-                      ? const Icon(Icons.menu_open, size: kIconSizeMedium)
-                      : const Icon(Icons.menu, size: kIconSizeMedium),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.symmetric(horizontal: extended ? 14 : 0, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Color.alphaBlend(
+                      colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.05 : 0.08),
+                      colorScheme.surfaceContainerLow,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.shadow.withValues(
+                                alpha: theme.brightness == Brightness.light ? 0.06 : 0.2,
+                              ),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Image.asset('assets/icons/logo.png'),
+                      ),
+                      if (extended) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'openhare',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                destinations[selectedIndex].label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            extended = !extended;
+                          });
+                        },
+                        style: IconButton.styleFrom(
+                          backgroundColor: colorScheme.surfaceContainerLowest,
+                          foregroundColor: colorScheme.onSurfaceVariant,
+                          minimumSize: const Size(40, 40),
+                        ),
+                        icon: Icon(
+                          extended ? Icons.menu_open_rounded : Icons.menu_rounded,
+                          size: kIconSizeMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: destinations.length,
+                    padding: EdgeInsets.zero,
+                    itemBuilder: (context, index) {
+                      final item = destinations[index];
+                      final selected = index == selectedIndex;
+                      final itemColor = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+                      final itemBackground = selected
+                          ? Color.alphaBlend(
+                              colorScheme.primary.withValues(alpha: theme.brightness == Brightness.light ? 0.08 : 0.12),
+                              colorScheme.primaryContainer,
+                            )
+                          : Colors.transparent;
+
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _onItemTapped(index, context),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            padding: EdgeInsets.symmetric(horizontal: extended ? 14 : 10, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: itemBackground,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: selected ? colorScheme.primary.withValues(alpha: 0.16) : Colors.transparent,
+                              ),
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                        color: colorScheme.primary.withValues(
+                                          alpha: theme.brightness == Brightness.light ? 0.12 : 0.18,
+                                        ),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeOutCubic,
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? colorScheme.surfaceContainerLowest
+                                        : colorScheme.surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: item.iconBuilder(itemColor),
+                                ),
+                                if (extended) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      item.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+                                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    separatorBuilder: (_, index) => const SizedBox(height: 8),
+                  ),
+                ),
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 160),
+                  opacity: extended ? 1 : 0,
+                  child: IgnorePointer(
+                    ignoring: !extended,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: Text(
+                        destinations[selectedIndex].label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            destinations: [
-              NavigationRailDestination(
-                icon: const Icon(Icons.personal_video),
-                label: Text(
-                  AppLocalizations.of(context)!.sessions,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.schedule),
-                label: Text(
-                  AppLocalizations.of(context)!.scheduled_task,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              NavigationRailDestination(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedDatabase,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant, // navigation rail 默认icon颜色
-                ),
-                label: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.db_instance,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.settings),
-                label: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.settings,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              // About 页面
-              NavigationRailDestination(
-                icon: const Icon(Icons.info_outline),
-                label: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.about,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
         Expanded(child: widget.child),
       ],
     );
+  }
+
+  List<_SidebarDestination> _destinations(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      _SidebarDestination(
+        label: l10n.sessions,
+        iconBuilder: (color) => Icon(Icons.terminal_rounded, size: kIconSizeMedium, color: color),
+      ),
+      _SidebarDestination(
+        label: l10n.scheduled_task,
+        iconBuilder: (color) => Icon(Icons.schedule_rounded, size: kIconSizeMedium, color: color),
+      ),
+      _SidebarDestination(
+        label: l10n.db_instance,
+        iconBuilder: (color) => HugeIcon(
+          icon: HugeIcons.strokeRoundedDatabase,
+          color: color,
+          size: kIconSizeMedium + 2,
+        ),
+      ),
+      _SidebarDestination(
+        label: l10n.settings,
+        iconBuilder: (color) => Icon(Icons.tune_rounded, size: kIconSizeMedium, color: color),
+      ),
+      _SidebarDestination(
+        label: l10n.about,
+        iconBuilder: (color) => Icon(Icons.info_outline_rounded, size: kIconSizeMedium, color: color),
+      ),
+    ];
   }
 
   static int _calculateSelectedIndex(BuildContext context) {
@@ -238,6 +415,16 @@ class _ScaffoldWithNavRailState extends State<ScaffoldWithNavRail> {
         break;
     }
   }
+}
+
+class _SidebarDestination {
+  const _SidebarDestination({
+    required this.label,
+    required this.iconBuilder,
+  });
+
+  final String label;
+  final Widget Function(Color color) iconBuilder;
 }
 
 class _WindowListener with WindowListener {
